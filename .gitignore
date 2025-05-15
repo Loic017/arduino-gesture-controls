@@ -30,3 +30,12 @@
 *.exe
 *.out
 *.app
+
+# Custom
+data
+.vscode
+.venv
+include
+lib
+test
+platformio.ini
