@@ -7,6 +7,7 @@ int dense_model(float *input);
 
 bool recording = false;
 int proximity = 250;
+int prev_proximity = 250;
 float ax, ay, az;
 float gx, gy, gz;
 
@@ -40,20 +41,24 @@ void loop() {
     proximity = APDS.readProximity();
   }
 
-  unsigned long current_time = millis();
+  // unsigned long current_time = millis();
 
-  if (proximity < 20 && !recording && (current_time - last_action_time > debounce_delay)) {
+  if (prev_proximity >= 20 && proximity < 20 && !recording) {
+    // Start recording
     recording = true;
-    last_action_time = current_time;
     Serial.println("Start");
-  } else if (proximity > 20 && recording && (current_time - last_action_time > debounce_delay)) {
+    sample_index = 0;
+    memset(features, 0, sizeof(features));
+  } else if (proximity >= 20 && recording) {
+    // Stop recording
     recording = false;
-    last_action_time = current_time;
     Serial.println("Stop");
 
     // Perform inference
-    if (sample_index == 100) {
-      float flattened_features[800];
+    if (sample_index >= 100) {
+      Serial.print("Sample index size: ");
+      Serial.println(sample_index);
+      float flattened_features[600];
       for (int i = 0; i < 100; i++) {
         for (int j = 0; j < 8; j++) {
           flattened_features[i * 8 + j] = features[i][j];
@@ -61,20 +66,19 @@ void loop() {
       }
       Serial.println("Inference");
       dense_model(flattened_features);
-      memset(features, 0, sizeof(features));
-      sample_index = 0;
-    } else if (sample_index < 50) {
-      Serial.println("Size of sample is too small.");
-      memset(features, 0, sizeof(features));
-      sample_index = 0;
+      delay(250);
+    // } 
+    // else if (sample_index < 50) {
+    //   Serial.println("Size of sample is too small.");
+    //   memset(features, 0, sizeof(features));
+    //   sample_index = 0;
     } else {
-      // Buffer out the sample to size 800 with 0s
       for (int i = sample_index; i < 100; i++) {
         for (int j = 0; j < 8; j++) {
           features[i][j] = 0;
         }
       }
-      float flattened_features[800];
+      float flattened_features[600];
       for (int i = 0; i < 100; i++) {
         for (int j = 0; j < 8; j++) {
           flattened_features[i * 8 + j] = features[i][j];
@@ -82,33 +86,34 @@ void loop() {
       }
       Serial.println("Inference");
       dense_model(flattened_features);
-      memset(features, 0, sizeof(features));
-      sample_index = 0;
+      delay(250);
     }
   }
 
   if (recording) {
-    if (sample_index == 100) {
-      recording = false;
-    }
+    // if (sample_index == 100) {
+    //   Serial.println("Size of samples reached 100");
+    //   recording = false;
+    // }
     if (IMU.accelerationAvailable()) {
       IMU.readAcceleration(ax, ay, az);
       if (IMU.gyroscopeAvailable()) {
         IMU.readGyroscope(gx, gy, gz);
 
         // Collect features in the specified order
-        features[sample_index][0] = proximity;
-        features[sample_index][1] = ax;
-        features[sample_index][2] = ay;
-        features[sample_index][3] = az;
-        features[sample_index][4] = gx;
-        features[sample_index][5] = gy;
-        features[sample_index][6] = gz;
+        features[sample_index][0] = ax;
+        features[sample_index][1] = ay;
+        features[sample_index][2] = az;
+        features[sample_index][3] = gx;
+        features[sample_index][4] = gy;
+        features[sample_index][5] = gz;
 
         sample_index++;
       }
     }
   }
+
+  prev_proximity = proximity;
 }
 
 //     if (inference) {
@@ -189,11 +194,9 @@ float relu(float input) {
 int predicted_class(float *input) {
   int max_idx = 0;
   float max_val = 0;
-  if (input == nullptr) {
-    Serial.println("Error: Null input to predicted_class");
-    return -1; // Return an error code
-  }
   for (int i = 0; i < 3; i++) {
+    Serial.print(input[i]);
+    Serial.print(",");
     if (input[i] > max_val) {
       max_idx = i;
     }
@@ -203,7 +206,7 @@ int predicted_class(float *input) {
 
 int dense_model(float *input) {
   Serial.println("Layer 1");
-  float* layer_1 = dense_layer(input, 800, 10, 10, layer_1_weights, layer_1_bias);
+  float* layer_1 = dense_layer(input, 600, 10, 10, layer_1_weights, layer_1_bias);
 
   Serial.println("ReLU");
   for (int i = 0; i < 10; i++) {

@@ -11,7 +11,9 @@ Gesture recognition on Arduino Nano 33 BLE Sense. Goal: Train and deploy initial
 
 ## To Do
 - [ ] Deploy model to Arduino (from PyTorch)
-- [ ] Write model from scratch for Arduino (Move weights from PyTorch model)
+- [x] Write model from scratch for Arduino (Move weights from PyTorch model)
+    - [ ] Test model -> Outputs are not correct (when compared to PyTorch)
+    - [ ] Can I optimize it in anyway?
 - [ ] Make gestures trigger events
 - [ ] Add more gestures
 
